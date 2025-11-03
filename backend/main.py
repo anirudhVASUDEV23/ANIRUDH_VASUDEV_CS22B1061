@@ -487,6 +487,171 @@ async def get_backtest_signals(
         logger.error(f"Error fetching backtest signals: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/pairs-analytics")
+async def get_pairs_analytics(
+    symbol1: str = Query("btcusdt"),
+    symbol2: str = Query("ethusdt"),
+    timeframe: str = "1m",
+    window: int = Query(50, ge=10, le=500)
+):
+    """Get pairs trading analytics: hedge ratio, correlation, cointegration"""
+    try:
+        # Fetch candles for both symbols
+        key1 = f"candles:{symbol1.lower()}:{timeframe}"
+        key2 = f"candles:{symbol2.lower()}:{timeframe}"
+        
+        candles1_data = await redis_client.lrange(key1, 0, window - 1)
+        candles2_data = await redis_client.lrange(key2, 0, window - 1)
+        
+        if not candles1_data or not candles2_data:
+            return {
+                "error": "Insufficient data",
+                "hedge_ratio": 0,
+                "correlation": 0,
+                "adf_test": None
+            }
+        
+        candles1 = [json.loads(c) for c in candles1_data]
+        candles2 = [json.loads(c) for c in candles2_data]
+        
+        prices1 = np.array([c["close"] for c in candles1])
+        prices2 = np.array([c["close"] for c in candles2])
+        
+        # Align lengths
+        min_len = min(len(prices1), len(prices2))
+        prices1 = prices1[-min_len:]
+        prices2 = prices2[-min_len:]
+        
+        engine = AnalyticsEngine()
+        
+        # Calculate hedge ratio (OLS regression)
+        hedge_ratio = engine.calculate_hedge_ratio(prices1, prices2)
+        
+        # Calculate correlation
+        correlation = engine.calculate_correlation(prices1, prices2)
+        
+        # Calculate spread
+        spread = prices2 - hedge_ratio * prices1
+        
+        # Test spread for stationarity (cointegration)
+        adf_result = engine.adf_test(spread)
+        
+        # Calculate z-score of spread
+        spread_z = engine.calculate_z_score(spread, min(window, len(spread)))
+        
+        return {
+            "symbol1": symbol1.lower(),
+            "symbol2": symbol2.lower(),
+            "hedge_ratio": float(hedge_ratio),
+            "correlation": float(correlation),
+            "spread_z_score": float(spread_z),
+            "adf_test": adf_result,
+            "is_cointegrated": adf_result["is_stationary"],
+            "window": min_len
+        }
+    except Exception as e:
+        logger.error(f"Error calculating pairs analytics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/rolling-correlation")
+async def get_rolling_correlation(
+    symbol1: str = Query("btcusdt"),
+    symbol2: str = Query("ethusdt"),
+    timeframe: str = "1m",
+    window: int = Query(20, ge=5, le=100),
+    limit: int = Query(100, le=500)
+):
+    """Get rolling correlation time series"""
+    try:
+        key1 = f"candles:{symbol1.lower()}:{timeframe}"
+        key2 = f"candles:{symbol2.lower()}:{timeframe}"
+        
+        candles1_data = await redis_client.lrange(key1, 0, limit - 1)
+        candles2_data = await redis_client.lrange(key2, 0, limit - 1)
+        
+        if not candles1_data or not candles2_data:
+            return {"correlations": []}
+        
+        candles1 = [json.loads(c) for c in candles1_data]
+        candles2 = [json.loads(c) for c in candles2_data]
+        candles1.reverse()
+        candles2.reverse()
+        
+        prices1 = np.array([c["close"] for c in candles1])
+        prices2 = np.array([c["close"] for c in candles2])
+        
+        min_len = min(len(prices1), len(prices2))
+        prices1 = prices1[:min_len]
+        prices2 = prices2[:min_len]
+        
+        engine = AnalyticsEngine()
+        correlations = []
+        
+        for i in range(window, min_len):
+            corr = engine.calculate_correlation(
+                prices1[i-window:i],
+                prices2[i-window:i]
+            )
+            correlations.append({
+                "timestamp": candles1[i]["timestamp"],
+                "correlation": float(corr)
+            })
+        
+        return {"correlations": correlations}
+    except Exception as e:
+        logger.error(f"Error calculating rolling correlation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/robust-regression")
+async def get_robust_regression(
+    symbol1: str = Query("btcusdt"),
+    symbol2: str = Query("ethusdt"),
+    timeframe: str = "1m",
+    window: int = Query(50, ge=10, le=500)
+):
+    """Get robust regression (Theil-Sen) for pairs trading"""
+    try:
+        key1 = f"candles:{symbol1.lower()}:{timeframe}"
+        key2 = f"candles:{symbol2.lower()}:{timeframe}"
+        
+        candles1_data = await redis_client.lrange(key1, 0, window - 1)
+        candles2_data = await redis_client.lrange(key2, 0, window - 1)
+        
+        if not candles1_data or not candles2_data:
+            return {"error": "Insufficient data"}
+        
+        candles1 = [json.loads(c) for c in candles1_data]
+        candles2 = [json.loads(c) for c in candles2_data]
+        
+        prices1 = np.array([c["close"] for c in candles1])
+        prices2 = np.array([c["close"] for c in candles2])
+        
+        min_len = min(len(prices1), len(prices2))
+        prices1 = prices1[-min_len:]
+        prices2 = prices2[-min_len:]
+        
+        engine = AnalyticsEngine()
+        
+        # OLS regression
+        ols_hedge = engine.calculate_hedge_ratio(prices1, prices2)
+        
+        # Robust regression (Theil-Sen)
+        robust_result = engine.calculate_robust_regression(prices1, prices2)
+        
+        return {
+            "symbol1": symbol1.lower(),
+            "symbol2": symbol2.lower(),
+            "ols_hedge_ratio": float(ols_hedge),
+            "robust_slope": robust_result.get("slope", 0),
+            "robust_intercept": robust_result.get("intercept", 0),
+            "robust_ci_low": robust_result.get("low_ci", 0),
+            "robust_ci_high": robust_result.get("high_ci", 0),
+            "window": min_len
+        }
+    except Exception as e:
+        logger.error(f"Error calculating robust regression: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""

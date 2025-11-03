@@ -5,6 +5,7 @@ import LiveDashboard from "./pages/LiveDashboard.jsx";
 import AnalyticsLab from "./pages/AnalyticsLab.jsx";
 import Backtester from "./pages/Backtester.jsx";
 import DataAlerts from "./pages/DataAlerts.jsx";
+import PairsTrading from "./pages/PairsTrading.jsx";
 import "./App.css";
 
 const App = () => {
@@ -40,6 +41,7 @@ const App = () => {
           <Route path="/analytics" element={<AnalyticsLab />} />
           <Route path="/backtest" element={<Backtester />} />
           <Route path="/data" element={<DataAlerts />} />
+          <Route path="/pairs" element={<PairsTrading />} />
           <Route path="*" element={<LiveDashboard />} />
         </Routes>
       </main>

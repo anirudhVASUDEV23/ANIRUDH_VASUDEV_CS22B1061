@@ -12,6 +12,10 @@ A full-stack experimental market intelligence playground that ingests real-time 
 
 [Watch Video](https://drive.google.com/file/d/1H2a1RyMVS5ErGETshxxst5inZOpQMIJz/view?usp=sharing)
 
+## ADVNCED FEATURES DEMO
+
+[Watch Video](https://drive.google.com/file/d/1A0LmDHCBv2AZExIFw_w7NmRK58pMdi0w/view?usp=sharing)
+
 ## Architecture
 
 ![System architecture](docs/architecture.svg)
@@ -29,8 +33,9 @@ _Edit the architecture source in `docs/architecture.drawio`; export updates to `
 
 - High-frequency ingestion (1s granularity) with auto-resampling to longer intervals.
 - Rolling analytics (z-score, volatility, ADF stationarity, MACD) with Redis caching.
+- **Pairs Trading Analytics**: Hedge ratio via OLS, robust regression (Theil-Sen), rolling correlation, and cointegration testing.
 - Alert engine that stores rules in Redis and broadcasts trigger events to the UI.
-- React dashboards for live charting (Plotly), analytics exploration, custom alerts, and simple backtests.
+- React dashboards for live charting (Plotly), analytics exploration, pairs trading, custom alerts, and simple backtests.
 
 ## Quick Start
 
@@ -91,6 +96,9 @@ The Vite dev server defaults to `http://localhost:5173`. It proxies API calls di
 - `GET /api/price/{symbol}?timeframe=1s&limit=1000` &mdash; historical candles.
 - `GET /api/analytics/{symbol}` &mdash; latest analytics snapshot.
 - `GET /api/correlation?symbols=btcusdt,ethusdt` &mdash; cross-symbol correlation matrix.
+- `GET /api/pairs-analytics?symbol1=btcusdt&symbol2=ethusdt` &mdash; hedge ratio, correlation, spread z-score, and cointegration test.
+- `GET /api/rolling-correlation?symbol1=btcusdt&symbol2=ethusdt` &mdash; time series of rolling correlation.
+- `GET /api/robust-regression?symbol1=btcusdt&symbol2=ethusdt` &mdash; OLS vs Theil-Sen robust regression comparison.
 - `POST /api/alerts` &mdash; create alert rules (stored with 7-day TTL).
 - `GET /api/alert-triggers/{symbol}` &mdash; retrieve triggered alerts for UI toasts.
 - WebSocket `/ws/data` &mdash; push stream for candles and analytics updates.
@@ -102,6 +110,10 @@ The Vite dev server defaults to `http://localhost:5173`. It proxies API calls di
 - **Volatility**: Rolling standard deviation of returns.
 - **ADF Test**: Augmented Dickey-Fuller test (statsmodels) for mean reversion detection.
 - **MACD**: Standard 12/26 EMA with 9-period signal line.
+- **Hedge Ratio**: OLS regression coefficient between two price series (for pairs trading).
+- **Robust Regression**: Theil-Sen median-based estimator resistant to outliers, with confidence intervals.
+- **Rolling Correlation**: Time-windowed Pearson correlation for tracking relationship dynamics.
+- **Cointegration**: ADF test on the spread to verify mean-reverting behavior in pairs.
 - **Alerts**: Rules stored in Redis evaluate z-score or price thresholds and push triggers via pub/sub.
 
 ## Design Considerations

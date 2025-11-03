@@ -353,3 +353,32 @@ button:disabled {
     flex-direction: column;
   }
 }
+
+/* Add this to your main index.css or App.css file */
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+/* On large screens, use two columns */
+@media (min-width: 1024px) {
+  .analytics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* This forces a panel to stretch to the full height of its grid cell */
+.panel--full-height {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* This makes the plot fill all available space in its panel */
+.panel__plot-container {
+  flex-grow: 1;
+  min-height: 400px;
+}
