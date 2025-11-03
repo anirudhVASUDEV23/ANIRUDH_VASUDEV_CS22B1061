@@ -2,6 +2,16 @@
 
 A full-stack experimental market intelligence playground that ingests real-time Binance trades, stores canonical candles in Redis, computes quantitative analytics continuously, and streams everything to a React/Vite interface for exploration, alerting, and backtesting.
 
+# Demo Videos
+
+## Website Demo
+
+[Watch Video](https://drive.google.com/file/d/1YKo4yxv-2dmmjl1cgO7M4IAdG_TRnnyL/view)
+
+## Redis DB Demo
+
+[Watch Video](https://drive.google.com/file/d/1H2a1RyMVS5ErGETshxxst5inZOpQMIJz/view?usp=sharing)
+
 ## Architecture
 
 ![System architecture](docs/architecture.svg)
